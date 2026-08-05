@@ -4,7 +4,7 @@ Recognizes static American Sign Language (ASL) alphabet signs in real time from 
 
 The pipeline has three stages:
 
-1. **Landmark extraction** — [Mediapipe](https://developers.google.com/mediapipe) detects 21 hand landmarks (x, y, z) per image in the [ASL alphabet dataset](https://www.kaggle.com/datasets/grassknoted/asl-alphabet), with horizontal-flip augmentation so the model generalizes to both hands.
+1. **Landmark extraction** — [Mediapipe](https://developers.google.com/mediapipe) detects 21 hand landmarks (x, y, z) per image of a static ASL alphabet sign, with horizontal-flip augmentation so the model generalizes to both hands.
 2. **Model training** — a hybrid 1D-CNN + Transformer classifies the 63-dimensional landmark vector (21 points × 3 coordinates) into a sign class.
 3. **Real-time inference** — the trained model runs on a live webcam feed (or a video/photo file), drawing a bounding box and predicted label over the detected hand.
 
@@ -14,6 +14,7 @@ The pipeline has three stages:
 notebooks/
   ASL_Sign_Recognition.ipynb   # full CNN+Transformer pipeline in one notebook (e.g. for Colab)
 src/
+  video_to_frames.py           # optional: build a dataset from your own recorded videos
   extract_landmarks.py         # Part 1: dataset -> landmarks pickle
   model.py                     # CNN + Transformer architecture
   train.py                     # Part 2: train + evaluate the model
@@ -31,11 +32,16 @@ pip install -r requirements.txt
 wget https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
 ```
 
-Download the [ASL alphabet dataset](https://www.kaggle.com/datasets/grassknoted/asl-alphabet) and point `--dataset-dir` at the `asl_alphabet_train/asl_alphabet_train` folder.
+You need a folder of static ASL alphabet images arranged one subfolder per class (e.g. `A/`, `B/`, `C/`, ...). If you don't have one yet, `src/video_to_frames.py` can build it from your own recorded videos (see step 0 below).
 
 ## Usage
 
 ```bash
+# 0. (Optional) Build an image dataset from your own recorded sign videos.
+#    Input: a folder of per-class video subfolders, e.g. videos/A/*.mp4, videos/B/*.mp4
+#    Output: a folder of per-class frame images, e.g. frames/A/1.jpg, frames/A/2.jpg
+python src/video_to_frames.py --input-dir path/to/videos --output-dir path/to/frames --fps 15
+
 # 1. Extract landmarks
 python src/extract_landmarks.py --dataset-dir path/to/asl_alphabet_train --model-path hand_landmarker.task --output landmarks.pkl.gz
 
