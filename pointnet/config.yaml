@@ -1,0 +1,27 @@
+model:
+  name: 'point_net_1.pth'
+  model_path: ./models
+
+paths:
+  results_path: ./results
+  missclassified_path: ./results/misclassified
+
+dataset:
+  image_dataset: ./data/asl_alphabet_train
+  npy_dataset: ./data/points_dataset
+  test_dataset: ./data/asl_alphabet_test
+  augmentations: ['rot', 'scale', 'noise']
+  to_discard: ['j', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']  # motion signs / digits not covered by this static-frame model
+  train_percent: 0.7
+  validation_percent: 0.3
+  test_percent: 0.0
+
+optimizer:
+  name: Adam
+  learning_rate: 0.0001
+  weight_decay: 0.00
+
+trainer:
+  num_epochs: 30
+  batch_size: 10
+  use_early_stopper: True

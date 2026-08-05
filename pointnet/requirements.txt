@@ -1,0 +1,9 @@
+torch
+scipy
+pyyaml
+tqdm
+opencv-python
+mediapipe
+numpy
+scikit-learn
+matplotlib

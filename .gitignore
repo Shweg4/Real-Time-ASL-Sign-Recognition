@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+
+# datasets and trained artifacts (regenerate via scripts, don't commit)
+*.pkl.gz
+*.pkl
+*.keras
+*.task
+*.pth
+*.h5
+asl_alphabet_train/
+asl_large.zip
+
+# pointnet/ generated data, models, and results
+pointnet/data/
+pointnet/models/
+pointnet/results/
+
+# notebook checkpoints
+.ipynb_checkpoints/
+
+# editors / OS
+.vscode/
+.DS_Store
