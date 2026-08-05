@@ -32,7 +32,7 @@ pip install -r requirements.txt
 wget https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
 ```
 
-You need a folder of static ASL alphabet images arranged one subfolder per class (e.g. `A/`, `B/`, `C/`, ...). If you don't have one yet, `src/video_to_frames.py` can build it from your own recorded videos (see step 0 below).
+You need a folder of static ASL alphabet images arranged one subfolder per class (e.g. `A/`, `B/`, `C/`, ...), such as the [ASL Alphabet dataset](https://www.kaggle.com/datasets/grassknoted/asl-alphabet) or [ASL Alphabet Train](https://www.kaggle.com/datasets/ameythakur20/asl-alphabet-train?resource=download) on Kaggle. If you don't have one yet, `src/video_to_frames.py` can build it from your own recorded videos (see step 0 below).
 
 ## Usage
 
