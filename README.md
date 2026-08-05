@@ -2,11 +2,36 @@
 
 Recognizes static American Sign Language (ASL) alphabet signs in real time from a webcam, video, or photo.
 
+Instead of classifying raw images directly, the pipeline first extracts the 3D coordinates of the hand's joints (called landmarks), then classifies signs from those coordinates. This keeps the model small and fast, and makes it far less sensitive to background, lighting, or skin tone than a model trained on raw pixels would be.
+
 The pipeline has three stages:
 
-1. **Landmark extraction** — [Mediapipe](https://developers.google.com/mediapipe) detects 21 hand landmarks (x, y, z) per image of a static ASL alphabet sign, with horizontal-flip augmentation so the model generalizes to both hands.
-2. **Model training** — a hybrid 1D-CNN + Transformer classifies the 63-dimensional landmark vector (21 points × 3 coordinates) into a sign class.
-3. **Real-time inference** — the trained model runs on a live webcam feed (or a video/photo file), drawing a bounding box and predicted label over the detected hand.
+1. **Landmark extraction.** [Mediapipe](https://developers.google.com/mediapipe)'s hand landmarker detects 21 keypoints per hand (fingertips, knuckles, wrist, etc.), each with (x, y, z) coordinates, giving a 63-number description of the hand's shape for every image. Images are also horizontally flipped and re-labeled, so the model sees both left and right hands during training.
+2. **Model training.** A classifier maps that 63-number vector to one of the alphabet classes. Two different model architectures are implemented and compared (see "Models" below).
+3. **Real-time inference.** The trained model runs on a live webcam feed (or a video/photo file): Mediapipe detects the hand and its landmarks in each frame, the model predicts a sign, and the prediction is drawn on screen with a confidence score.
+
+## Models
+
+Two independent classifiers are trained on the same landmark data, using two different ways of thinking about what a "hand" is.
+
+### 1. 1D-CNN + Transformer hybrid (`src/`, `notebooks/`)
+
+This is the main model. The 63 landmark values are treated as a short 1D sequence and fed through:
+
+- **1D convolutional layers first**, to pick up local patterns among landmarks that are numbered near each other (e.g. the three joints along one finger).
+- **A Transformer block (self-attention) after that**, so the model can also relate landmarks that are far apart in the numbering but matter together for a given sign (e.g. the thumb tip and the pinky tip, which sit at opposite ends of the 21-point list but are often the two points that define a shape like "L" or "Y").
+
+TensorFlow/Keras is used here. Training uses early stopping and learning-rate reduction on plateau, so it stops automatically once validation accuracy stops improving rather than always running the full epoch budget.
+
+### 2. PointNet (`pointnet/`), an alternative approach
+
+The CNN+Transformer model treats the 21 landmarks as if they were in a meaningful order (landmark #5 next to landmark #6, and so on), because that's how Mediapipe numbers them. But a hand isn't really a sequence, it's a set of points in 3D space with no natural order. PointNet is a model architecture designed for exactly that: point clouds.
+
+It works by running the same small neural network independently on every point, then combining all 21 results with a single max-pooling step. Because max-pooling doesn't care what order its inputs arrive in, the model's prediction is unaffected by the order of the landmarks, matching how a hand actually is (a shape, not a sequence).
+
+This version is implemented in PyTorch and is trained with 3D data augmentation (random rotation, scaling, and Gaussian noise on the point cloud) to make it robust to hand orientation and camera angle. It also includes a proper evaluation script that produces a confusion matrix and saves misclassified images for inspection, which the CNN+Transformer pipeline does not currently have.
+
+Both models only cover *static* alphabet signs. Letters that require motion to sign correctly (`j` and `z`) and the digits are excluded, since a single still frame of landmarks can't capture motion.
 
 ## Repo layout
 
@@ -20,7 +45,7 @@ src/
   train.py                     # Part 2: train + evaluate the model
   infer.py                     # Part 3: real-time / video / photo inference
 pointnet/
-  ...                          # alternative approach, see below
+  ...                          # PointNet alternative, see "Models" above
 ```
 
 Use the notebook if you want to run the whole thing end-to-end in one place (e.g. Colab, with GPU). Use the `src/` scripts if you want to run or reuse individual stages locally.
@@ -52,11 +77,7 @@ python src/train.py --data landmarks.pkl.gz --model-out asl_model.keras --label-
 python src/infer.py --model asl_model.keras --label-encoder label_encoder.pkl --mode live
 ```
 
-## Alternative approach: PointNet (`pointnet/`)
-
-A second, independent modeling approach: instead of flattening the 21 landmarks into a 1D vector for the CNN+Transformer, `pointnet/` treats them as an unordered 3D point cloud and classifies them with a [PointNet](https://arxiv.org/abs/1612.00593)-style architecture (PyTorch), trained with 3D rotation/scale/Gaussian-noise augmentation. It also includes a proper evaluation script that produces a confusion matrix and dumps misclassified samples for inspection.
-
-It only covers the *static* alphabet signs — `j` and `z` (which require motion) and digits are excluded, since this pipeline classifies single still frames.
+## PointNet quickstart
 
 ```bash
 pip install -r pointnet/requirements.txt
@@ -76,5 +97,5 @@ Edit `pointnet/config.yaml` to point at your dataset, model, and output director
 
 ## Notes
 
-- Datasets and trained model artifacts are not committed to this repo (see `.gitignore`) — regenerate them with the scripts above.
-- Training uses early stopping and LR reduction on plateau, so `--epochs` is an upper bound rather than a fixed run length.
+- Datasets and trained model artifacts are not committed to this repo (see `.gitignore`), regenerate them with the scripts above.
+- Training uses early stopping and learning-rate reduction on plateau, so `--epochs` is an upper bound rather than a fixed run length.
